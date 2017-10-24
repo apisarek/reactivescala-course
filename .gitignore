@@ -1,4 +1,3 @@
-
 # Created by https://www.gitignore.io/api/java,scala,intellij
 
 ### Intellij ###
@@ -93,3 +92,6 @@ hs_err_pid*
 ### Scala ###
 
 # End of https://www.gitignore.io/api/java,scala,intellij
+=======
+*.class
+*.log
