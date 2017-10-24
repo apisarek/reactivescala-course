@@ -8,7 +8,8 @@ import scala.concurrent.duration._
 class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   with FlatSpecLike
   with Matchers
-  with BeforeAndAfterAll with Eventually {
+  with BeforeAndAfterAll
+  with Eventually {
 
   override def afterAll {
     TestKit.shutdownActorSystem(system)
@@ -92,7 +93,5 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
     checkout ! Checkout.PaymentReceived
     checkout.stateName shouldBe Closed
   }
-
-
 }
 
