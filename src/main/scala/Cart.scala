@@ -25,9 +25,10 @@ class Cart(expirationTime: FiniteDuration = 10.seconds) extends Timers {
       timers.startSingleTimer(CartTimerKey, CartTimerExpired, expirationTime)
     case ItemRemoved =>
       _items -= 1
-      if (_items == 0)
+      if (_items == 0) {
         timers.cancel(CartTimerKey)
-      context.become(empty)
+        context.become(empty)
+      }
       timers.startSingleTimer(CartTimerKey, CartTimerExpired, expirationTime)
     case CartTimerExpired =>
       _items = 0
