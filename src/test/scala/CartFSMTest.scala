@@ -84,7 +84,7 @@ class CartFSMTest extends TestKit(ActorSystem("CartFSMTest"))
   }
 
   "Cart" should "go to Empty after adding product and expiring" in {
-    val cart = TestFSMRef(new CartFSM(100 millis))
+    val cart = TestFSMRef(new CartFSM(100.millis))
     cart ! ItemAdded
     eventually { // waits 150 milliseconds by default
       cart.stateName shouldBe Empty

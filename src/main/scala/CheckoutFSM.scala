@@ -20,6 +20,10 @@ class CheckoutFSM(checkoutExpirationTime: FiniteDuration = 10.seconds, paymentEx
     case _ => stay
   }
 
+  when(Closed) {
+    case _ => stay
+  }
+
   when(SelectingPaymentMethod, stateTimeout = checkoutExpirationTime) {
     case Event(StateTimeout | Checkout.Cancelled, _) =>
       goto(Cancelled) using CheckoutParameters()
@@ -28,10 +32,10 @@ class CheckoutFSM(checkoutExpirationTime: FiniteDuration = 10.seconds, paymentEx
   }
 
   when(ProcessingPayment, stateTimeout = paymentExpirationTime) {
-    case Event(StateTimeout | Checkout.Cancelled, _) =>
-      goto(Cancelled) using CheckoutParameters()
     case Event(PaymentReceived, _) =>
       goto(Closed)
+    case Event(StateTimeout | Checkout.Cancelled, _) =>
+      goto(Cancelled) using CheckoutParameters()
 
   }
 

@@ -87,7 +87,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "be closeable" in {
-    val checkout = TestFSMRef(new CheckoutFSM(paymentExpirationTime = 100 millis))
+    val checkout = TestFSMRef(new CheckoutFSM())
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout ! Checkout.PaymentReceived
