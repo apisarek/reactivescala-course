@@ -26,22 +26,20 @@ class Cart(expirationTime: FiniteDuration = 10.seconds) extends Timers {
     case ItemRemoved =>
       _items -= 1
       if (_items == 0) {
-        timers.cancel(CartTimerKey)
         context.become(empty)
       }
       timers.startSingleTimer(CartTimerKey, CartTimerExpired, expirationTime)
     case CartTimerExpired =>
       _items = 0
-      timers.cancel(CartTimerKey)
       context.become(empty)
     case CheckoutStarted =>
-      timers.cancel(CartTimerKey)
       context.become(inCheckout)
   }
 
   def inCheckout: Receive = LoggingReceive {
     case CheckoutCanceled =>
       context.become(nonEmpty)
+      timers.startSingleTimer(CartTimerKey, CartTimerExpired, expirationTime)
     case CheckoutClosed =>
       _items = 0
       context.become(empty)
