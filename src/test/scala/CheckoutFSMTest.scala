@@ -1,4 +1,4 @@
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestFSMRef, TestKit}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
@@ -11,24 +11,25 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   with BeforeAndAfterAll
   with Eventually {
 
+  val cart = system.actorOf(Props(new Cart()))
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
 
   "Checkout" should "start in SelectingDelivery" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout.stateName shouldBe SelectingDelivery
     checkout.stateData shouldBe CheckoutParameters()
   }
 
   "Checkout" should "be cancellable after creation" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.Cancelled
     checkout.stateName shouldBe Cancelled
   }
 
   "Checkout" should "expire and goto Cancelled " in {
-    val checkout = TestFSMRef(new CheckoutFSM(checkoutExpirationTime = 100 millis))
+    val checkout = TestFSMRef(new CheckoutFSM(cart, checkoutExpirationTime = 100 millis))
     checkout.stateName shouldBe SelectingDelivery
     eventually {
       checkout.stateName shouldBe Cancelled
@@ -36,14 +37,14 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "go to SelectingPaymentMethod after delivery method selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout.stateName shouldBe SelectingPaymentMethod
     checkout.stateData shouldBe CheckoutParameters("deliveryMethod")
   }
 
   "Checkout" should "be cancellable after delivery method selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout.stateName shouldBe SelectingPaymentMethod
     checkout ! Checkout.Cancelled
@@ -51,7 +52,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "expire and goto Cancelled after delivery method selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM(checkoutExpirationTime = 100 millis))
+    val checkout = TestFSMRef(new CheckoutFSM(cart, checkoutExpirationTime = 100 millis))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout.stateName shouldBe SelectingPaymentMethod
     eventually {
@@ -60,7 +61,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "go to ProcessingPayment after payment selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout.stateName shouldBe ProcessingPayment
@@ -68,7 +69,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "be cancellable after payment method selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout ! Checkout.Cancelled
@@ -76,7 +77,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "expire and goto Cancelled after payment method selection" in {
-    val checkout = TestFSMRef(new CheckoutFSM(paymentExpirationTime = 100 millis))
+    val checkout = TestFSMRef(new CheckoutFSM(cart, paymentExpirationTime = 100 millis))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
 
@@ -87,7 +88,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   }
 
   "Checkout" should "be closeable" in {
-    val checkout = TestFSMRef(new CheckoutFSM())
+    val checkout = TestFSMRef(new CheckoutFSM(cart))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout ! Checkout.PaymentReceived

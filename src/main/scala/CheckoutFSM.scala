@@ -1,11 +1,18 @@
 import Checkout.{DeliveryMethodSelected, PaymentReceived, PaymentSelected}
-import akka.actor.FSM
+import akka.actor.{ActorRef, FSM, Props}
 
 import scala.concurrent.duration._
 
-class CheckoutFSM(checkoutExpirationTime: FiniteDuration = 10.seconds, paymentExpirationTime: FiniteDuration = 10.seconds)
-  extends FSM[CheckoutState, CheckoutData] {
+sealed trait CheckoutData
 
+sealed trait CheckoutState
+
+class CheckoutFSM(
+  cart: ActorRef,
+  checkoutExpirationTime: FiniteDuration = 10.seconds,
+  paymentExpirationTime: FiniteDuration = 10.seconds
+)
+  extends FSM[CheckoutState, CheckoutData] {
 
   startWith(SelectingDelivery, CheckoutParameters())
 
@@ -27,26 +34,41 @@ class CheckoutFSM(checkoutExpirationTime: FiniteDuration = 10.seconds, paymentEx
   when(SelectingPaymentMethod, stateTimeout = checkoutExpirationTime) {
     case Event(StateTimeout | Checkout.Cancelled, _) =>
       goto(Cancelled) using CheckoutParameters()
-    case Event(PaymentSelected(method), checkoutData: CheckoutParameters) =>
-      goto(ProcessingPayment) using checkoutData.copy(payment = method)
+    case Event(PaymentSelected(method), CheckoutParameters(delivery, payment)) =>
+      val paymentService = context.system.actorOf(Props(new PaymentService(context.self)))
+      goto(ProcessingPayment) using CheckoutParametersWithPaymentService(delivery, payment, paymentService)
   }
 
   when(ProcessingPayment, stateTimeout = paymentExpirationTime) {
     case Event(PaymentReceived, _) =>
+
       goto(Closed)
     case Event(StateTimeout | Checkout.Cancelled, _) =>
       goto(Cancelled) using CheckoutParameters()
 
   }
 
+
+  onTransition {
+    case _ -> ProcessingPayment =>
+      val paymentService = nextStateData.asInstanceOf[CheckoutParametersWithPaymentService].paymentService
+      sender() ! Customer.PaymentServiceStarted(paymentService)
+    case _ -> Closed =>
+      cart ! Cart.CheckoutClosed
+  }
+
   initialize()
 }
 
-sealed trait CheckoutData
-
-final case class CheckoutParameters(delivery: String = "", payment: String = "") extends CheckoutData
-
-sealed trait CheckoutState
+final case class CheckoutParameters(
+  delivery: String = "",
+  payment: String = ""
+) extends CheckoutData
+final case class CheckoutParametersWithPaymentService(
+  delivery: String = "",
+  payment: String = "",
+  paymentService: ActorRef
+) extends CheckoutData
 
 case object Cancelled extends CheckoutState
 
