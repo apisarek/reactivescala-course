@@ -11,8 +11,7 @@ class CheckoutFSM(
   cart: ActorRef,
   checkoutExpirationTime: FiniteDuration = 10.seconds,
   paymentExpirationTime: FiniteDuration = 10.seconds
-)
-  extends FSM[CheckoutState, CheckoutData] {
+) extends FSM[CheckoutState, CheckoutData] {
 
   startWith(SelectingDelivery, CheckoutParameters())
 
