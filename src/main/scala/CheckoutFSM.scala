@@ -33,9 +33,9 @@ class CheckoutFSM(
   when(SelectingPaymentMethod, stateTimeout = checkoutExpirationTime) {
     case Event(StateTimeout | Checkout.Cancelled, _) =>
       goto(Cancelled) using CheckoutParameters()
-    case Event(PaymentSelected(method), CheckoutParameters(delivery, payment)) =>
+    case Event(PaymentSelected(method), CheckoutParameters(delivery, _)) =>
       val paymentService = context.system.actorOf(Props(new PaymentService(context.self)))
-      goto(ProcessingPayment) using CheckoutParametersWithPaymentService(delivery, payment, paymentService)
+      goto(ProcessingPayment) using CheckoutParametersWithPaymentService(delivery, method, paymentService)
   }
 
   when(ProcessingPayment, stateTimeout = paymentExpirationTime) {

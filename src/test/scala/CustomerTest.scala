@@ -20,6 +20,7 @@ class CustomerTest extends TestKit(ActorSystem("CustomerTest"))
     customer ! Customer.DeliveryMethodSelected("delivery")
     customer ! Customer.PaymentSelected("payment")
     Thread.sleep(500)
+    customer.stateName shouldNot be (Customer.FirstState)
     customer ! Customer.DoPayment
     Thread.sleep(1000)
     customer.stateName shouldBe Customer.FirstState

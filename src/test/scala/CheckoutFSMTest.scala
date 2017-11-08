@@ -1,5 +1,5 @@
 import akka.actor.{ActorSystem, Props}
-import akka.testkit.{TestFSMRef, TestKit}
+import akka.testkit.{TestFSMRef, TestKit, TestProbe}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
@@ -65,7 +65,9 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout.stateName shouldBe ProcessingPayment
-    checkout.stateData shouldBe CheckoutParameters("deliveryMethod", "payment")
+    val state = checkout.stateData.asInstanceOf[CheckoutParametersWithPaymentService]
+    state.delivery shouldBe "deliveryMethod"
+    state.payment shouldBe "payment"
   }
 
   "Checkout" should "be cancellable after payment method selection" in {
@@ -93,6 +95,15 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
     checkout ! Checkout.PaymentSelected("payment")
     checkout ! Checkout.PaymentReceived
     checkout.stateName shouldBe Closed
+  }
+
+  "Checkout" should "should send CheckoutClosed to cart" in {
+    val cart = TestProbe()
+    val checkout = TestFSMRef(new CheckoutFSM(cart.ref))
+    checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
+    checkout ! Checkout.PaymentSelected("payment")
+    checkout ! Checkout.PaymentReceived
+    cart.expectMsg(500 millis, Cart.CheckoutClosed)
   }
 }
 
