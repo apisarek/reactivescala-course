@@ -9,6 +9,7 @@ sealed trait CheckoutState
 
 class CheckoutFSM(
   cart: ActorRef,
+  customer: ActorRef,
   checkoutExpirationTime: FiniteDuration = 10.seconds,
   paymentExpirationTime: FiniteDuration = 10.seconds
 ) extends FSM[CheckoutState, CheckoutData] {
@@ -53,6 +54,7 @@ class CheckoutFSM(
       val paymentService = nextStateData.asInstanceOf[CheckoutParametersWithPaymentService].paymentService
       sender() ! Customer.PaymentServiceStarted(paymentService)
     case _ -> Closed =>
+      customer ! Customer.CheckoutClosed
       cart ! Cart.CheckoutClosed
   }
 

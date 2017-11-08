@@ -21,7 +21,7 @@ class CartFSM(customer: ActorRef, cartExpirationTime: FiniteDuration = 10.second
     case Event(ItemRemoved, CartContent(content)) =>
       stay using CartContent(content - 1)
     case Event(CheckoutStarted, CartContent(content)) =>
-      val checkout = context.system.actorOf(Props(new CheckoutFSM(context.self)))
+      val checkout = context.system.actorOf(Props(new CheckoutFSM(context.self, customer)))
       goto(InCheckout) using CartContentWithCheckout(content, checkout)
   }
 
@@ -30,10 +30,6 @@ class CartFSM(customer: ActorRef, cartExpirationTime: FiniteDuration = 10.second
       val checkout = nextStateData.asInstanceOf[CartContentWithCheckout].checkout
       sender() ! Customer.CheckoutStarted(checkout)
     case InCheckout -> Empty =>
-      println(customer)
-      println(customer.path)
-      println(context.parent)
-      println(context.parent.path)
       customer ! Customer.CartEmpty
   }
 

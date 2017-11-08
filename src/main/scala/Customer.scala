@@ -61,7 +61,13 @@ class Customer extends FSM[CustomerState, CustomerData] {
       goto(Customer.NinthState)
   }
 
+
   when(Customer.NinthState) {
+    case Event(Customer.CheckoutClosed, _) =>
+      goto(Customer.TenthState)
+  }
+
+  when(Customer.TenthState) {
     case Event(Customer.CartEmpty, Customer.CustomerCartCheckoutPayment(cart, _, _)) =>
       goto(Customer.FirstState) using Customer.CustomerCart(cart)
   }
@@ -118,6 +124,10 @@ object Customer {
   object CartEmpty
 
   case object NinthState extends CustomerState
+
+  case object CheckoutClosed
+
+  case object TenthState extends CustomerState
 
 }
 
