@@ -50,9 +50,9 @@ object Cart {
 
   case object CartTimerKey
 
-  case object ItemAdded
+  case class ItemAdded(itemName: String)
 
-  case object ItemRemoved
+  case class ItemRemoved(itemName: String)
 
   case object CartTimerExpired
 

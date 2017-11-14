@@ -49,6 +49,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
     val checkout = TestFSMRef(new CheckoutFSM(cart, customer))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout.stateName shouldBe SelectingPaymentMethod
+
     checkout ! Checkout.Cancelled
     checkout.stateName shouldBe Cancelled
   }

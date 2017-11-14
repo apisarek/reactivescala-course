@@ -7,7 +7,7 @@ sealed trait CustomerState
 
 class Customer extends FSM[CustomerState, CustomerData] {
   startWith(Customer.FirstState, Customer.CustomerCart(
-    context.system.actorOf(Props(new CartFSM(context.self)))
+    context.system.actorOf(Props(new CartManagerFSM(context.self)))
   ))
 
   when(Customer.FirstState) {
