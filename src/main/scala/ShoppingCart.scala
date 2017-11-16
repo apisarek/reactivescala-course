@@ -1,19 +1,25 @@
-case class ShoppingCart(items: Map[String, Int] = Map.empty) {
-  def addItem(item: String): ShoppingCart = {
-    val currentCount: Int = items.getOrElse(item, 0)
-    val newCount = currentCount + 1
-    ShoppingCart(items.updated(item, newCount))
+import java.net.URI
+
+case class ShoppingCart(items: Map[URI, Item] = Map.empty) {
+  def addItem(item: Item): ShoppingCart = {
+    val currentCount = if (items contains item.id) items(item.id).count else 0
+    copy(items = items.updated(item.id, item.copy(count = currentCount + item.count)))
   }
-  def removeItem(item: String): ShoppingCart = {
-    val currentCount = items.get(item)
-    currentCount match {
-      case None =>
-        this // removing non-existing item results in no action
-      case Some(1) =>
-        ShoppingCart(items - item)
-      case Some(count) =>
-        ShoppingCart(items.updated(item, count - 1))
+  def removeItem(item: Item, count: Int = 1): ShoppingCart = {
+    val itemSeeked = items.get(item.id)
+    itemSeeked match {
+      case None => this
+      case Some(foundItem) =>
+        val foundCount = foundItem.count
+        val countAfter = foundCount - count
+        if (countAfter <= 0)
+          copy(items = items - item.id)
+        else
+          copy(items = items.updated(item.id, item.copy(count = countAfter)))
     }
   }
-  def count: Int = items.values.sum
+  def count: Int = items.values.map(_.count).sum
+  def isEmpty: Boolean = count <= 0
 }
+
+case class Item(id: URI, name: String, price: BigDecimal, count: Int = 1)

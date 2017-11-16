@@ -66,3 +66,21 @@ final case class CartManagerContentWithCheckout(shoppingCart: ShoppingCart, chec
     CartManagerContent(shoppingCart)
   }
 }
+
+object Cart {
+
+  case object CartTimerKey
+
+  case class ItemAdded(item: Item)
+
+  case class ItemRemoved(item: Item)
+
+  case object CartTimerExpired
+
+  case object CheckoutStarted
+
+  case object CheckoutCanceled
+
+  case object CheckoutClosed
+
+}

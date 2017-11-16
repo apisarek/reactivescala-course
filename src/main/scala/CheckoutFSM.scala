@@ -80,3 +80,23 @@ case object SelectingPaymentMethod extends CheckoutState
 case object ProcessingPayment extends CheckoutState
 
 case object Closed extends CheckoutState
+
+object Checkout {
+
+  case class DeliveryMethodSelected(method: String)
+
+  case class PaymentSelected(payment: String)
+
+  case object CheckoutTimerExpired
+
+  case object PaymentTimerKey
+
+  case object Cancelled
+
+  case object CheckoutTimerKey
+
+  case object PaymentReceived
+
+  case object PaymentTimerExpired
+
+}
