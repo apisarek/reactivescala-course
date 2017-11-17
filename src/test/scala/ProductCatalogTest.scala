@@ -10,7 +10,7 @@ class ProductCatalogTest extends FlatSpec
 
   "cart.ShoppingCart" should "start in Empty state" in {
     val catalog = getProductCatalog("../query_result")
-    val top = topMatching(catalog, "dupa")
+    val top = topMatching(catalog, "fanta")
     top.foreach(println)
   }
 
@@ -39,9 +39,9 @@ class ProductCatalogTest extends FlatSpec
   }
 
   def score(item: Item, query: String): Int = {
-    val itemParts = item.name.split(" ")
-    val queryParts = query.split(" ")
-    0
+    val itemParts = item.name.split(" ").map(_.toLowerCase)
+    val queryParts = query.split(" ").map(_.toLowerCase)
+    queryParts.map(itemParts contains _).map(if(_) 1 else 0).sum
   }
 
 }
