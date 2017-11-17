@@ -2,7 +2,7 @@ import akka.actor.{ActorSystem, Props}
 import akka.testkit.{TestFSMRef, TestKit, TestProbe}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-
+import Utils.generateID
 import scala.concurrent.duration._
 
 class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
@@ -11,9 +11,9 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
   with BeforeAndAfterAll
   with Eventually {
 
-  val cart = system.actorOf(Props(new Cart()))
-
   val customer = system.actorOf(Props[Customer])
+  val cart = system.actorOf(Props(new CartManagerFSM(customer, generateID())))
+
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
@@ -106,7 +106,7 @@ class CheckoutFSMTest extends TestKit(ActorSystem("CheckoutFSMTest"))
     checkout ! Checkout.DeliveryMethodSelected("deliveryMethod")
     checkout ! Checkout.PaymentSelected("payment")
     checkout ! Checkout.PaymentReceived
-    cart.expectMsg(500 millis, Cart.CheckoutClosed)
+    cart.expectMsg(500 millis, CartMessages.CheckoutClosed)
   }
 }
 

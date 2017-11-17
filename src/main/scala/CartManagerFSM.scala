@@ -1,79 +1,101 @@
-import akka.actor.{ActorRef, FSM, Props}
-import akka.persistence
+import java.net.URI
+
+import akka.actor.{ActorRef, Props}
+import akka.persistence.fsm.PersistentFSM
 
 import scala.concurrent.duration._
+import scala.reflect._
 
-class CartManagerFSM(customer: ActorRef, cartExpirationTime: FiniteDuration = 10.seconds)
-  extends FSM [CartState, CartData] {
-  import Cart._
-  startWith(Empty, CartManagerContent())
+
+class CartManagerFSM(
+  customer: ActorRef,
+  id: String,
+  cartExpirationTime: FiniteDuration = 1.seconds
+)(
+  implicit val domainEventClassTag: ClassTag[CartDomainEvent]
+)
+  extends PersistentFSM[CartState, CartData, CartDomainEvent] {
+
+  import CartMessages._
+
+  override def persistenceId: String = id
+
   when(Empty) {
-    case Event(ItemAdded(itemName), CartManagerContent(cart)) =>
-      goto(NonEmpty) using CartManagerContent(cart.addItem(itemName))
+    case Event(ItemAdded(item), _) =>
+      goto(NonEmpty) applying AddingItem(item)
   }
 
   when(NonEmpty, stateTimeout = cartExpirationTime) {
-    case Event(ItemAdded(itemName), CartManagerContent(cart)) =>
-      stay using CartManagerContent(cart.addItem(itemName))
     case Event(StateTimeout, _) =>
-      goto(Empty) using CartManagerContent()
+      goto(Empty) applying FreeingCart
+    case Event(ItemAdded(item), _) =>
+      stay applying AddingItem(item)
     case Event(ItemRemoved(itemName), CartManagerContent(cart)) if cart.removeItem(itemName).count == 0 =>
-      goto(Empty) using CartManagerContent(cart.removeItem(itemName))
-    case Event(ItemRemoved(itemName), CartManagerContent(cart)) =>
-      stay using CartManagerContent(cart.removeItem(itemName))
-    case Event(CheckoutStarted, content: CartManagerContent) =>
+      goto(Empty) applying FreeingCart
+    case Event(ItemRemoved(item), CartManagerContent(_)) =>
+      stay applying RemovingItem(item)
+    case Event(CheckoutStarted, _: CartManagerContent) =>
       val checkout = context.system.actorOf(Props(new CheckoutFSM(context.self, customer)))
-      goto(InCheckout) using content.addCheckout(checkout)
+      goto(InCheckout) applying AddingCheckout(checkout)
   }
 
   onTransition {
     case _ -> InCheckout =>
       val checkout = nextStateData.asInstanceOf[CartManagerContentWithCheckout].checkout
-      sender() ! Customer.CheckoutStarted(checkout)
+      customer ! Customer.CheckoutStarted(checkout)
     case InCheckout -> Empty =>
       customer ! Customer.CartEmpty
   }
 
   when(InCheckout) {
-    case Event(CheckoutCanceled, content: CartManagerContentWithCheckout) =>
-      goto(NonEmpty) using content.removeCheckout()
+    case Event(CheckoutCanceled, _: CartManagerContentWithCheckout) =>
+      goto(NonEmpty) applying RemovingCheckout
     case Event(CheckoutClosed, _) =>
-      goto(Empty) using CartManagerContent()
+      goto(Empty) applying FreeingCart
   }
 
-  initialize()
-
-
-}
-
-sealed trait CartState
-
-case object Empty extends CartState
-
-case object NonEmpty extends CartState
-
-case object InCheckout extends CartState
-
-sealed trait CartData
-
-final case class CartManagerContent(shoppingCart: ShoppingCart = ShoppingCart()) extends CartData {
-  def addCheckout(checkout: ActorRef): CartManagerContentWithCheckout = {
-    CartManagerContentWithCheckout(shoppingCart, checkout)
+  whenUnhandled {
+    case Event(GetShoppingCart, _) =>
+      sender() ! stateData.shoppingCart
+      stay
+    case Event(PrintStateName, _) =>
+      println(stateName)
+      println(stateData)
+      stay
+    case Event(GetStateData, _) =>
+      sender() ! stateData
+      stay
+    case Event(GetStateName, _) =>
+      sender() ! stateName.toString
+      stay
   }
-}
-final case class CartManagerContentWithCheckout(shoppingCart: ShoppingCart, checkout: ActorRef) extends CartData {
-  def removeCheckout(): CartManagerContent = {
-    CartManagerContent(shoppingCart)
+
+
+  override def applyEvent(domainEvent: CartDomainEvent, currentData: CartData): CartData = {
+    domainEvent match {
+      case AddingItem(item) => currentData.updateShoppingCart(currentData.shoppingCart.addItem(item))
+      case RemovingItem(item) => currentData.updateShoppingCart(currentData.shoppingCart.removeItem(item))
+      case AddingCheckout(checkout) => currentData.addCheckout(checkout)
+      case RemovingCheckout => currentData.removeCheckout()
+      case FreeingCart => currentData.updateShoppingCart(ShoppingCart())
+    }
   }
+
+  startWith(Empty, CartManagerContent())
 }
 
-object Cart {
 
-  case object CartTimerKey
+object CartMessages {
 
   case class ItemAdded(item: Item)
 
-  case class ItemRemoved(item: Item)
+  case class ItemRemoved(id: URI)
+
+  case object GetStateData
+
+  case object GetStateName
+
+  case object CartTimerKey
 
   case object CartTimerExpired
 
@@ -83,4 +105,12 @@ object Cart {
 
   case object CheckoutClosed
 
+  case object GetShoppingCart
+
 }
+
+
+
+
+
+

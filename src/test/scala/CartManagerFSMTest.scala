@@ -1,7 +1,7 @@
 import java.net.URI
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.testkit.{TestFSMRef, TestKit}
+import akka.actor.{ActorSystem, PoisonPill, Props}
+import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
@@ -10,95 +10,140 @@ import scala.concurrent.duration._
 class CartManagerFSMTest extends TestKit(ActorSystem("CartFSMTest"))
   with FlatSpecLike
   with Matchers
-  with BeforeAndAfterAll with Eventually {
-  import Cart._
+  with BeforeAndAfterAll
+  with Eventually
+  with ImplicitSender
+{
+  import CartMessages._
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
 
-  private val customer: ActorRef = system.actorOf(Props[Customer])
+  private val customer = TestProbe()
   private val bigosURI: URI = URI.create("bigos1")
   private val bigos: Item = Item(bigosURI, "bigos", BigDecimal(0))
   private val jajkaURI: URI = URI.create("jajka1")
   private val jajka: Item = Item(jajkaURI, "jajka", BigDecimal(0))
 
   "Cart" should "start in Empty state" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
-    cart.stateName shouldBe Empty
-    cart.stateData shouldBe CartManagerContent()
+    val id = "cart-1"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id)))
+    cart ! ItemAdded(bigos)
+    cart ! GetShoppingCart
+
+    val shoppingCart = ShoppingCart(Map(bigosURI -> bigos))
+    expectMsg(shoppingCart)
   }
 
-  "Cart" should "go to NonEmpty state after adding product" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+  "Cart" should "persist state and data" in {
+    val time = 20.seconds
+    val id = "cart-2"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart.stateName shouldBe NonEmpty
-    cart.isStateTimerActive shouldBe true
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map(bigosURI -> bigos)))
+    val shoppingCart = ShoppingCart(Map(bigosURI -> bigos))
+
+    cart ! GetShoppingCart
+    expectMsg(shoppingCart)
+    Thread.sleep(100)
+    cart ! PoisonPill
+
+    val cart2 = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
+
+    cart2 ! GetShoppingCart
+    expectMsg(shoppingCart)
   }
 
-  "Cart" should "stay in NonEmpty state after adding products" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+  "Cart" should "persist timer" in {
+    val time = 1.seconds
+    val id = "cart-3"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart ! ItemAdded(bigos)
-    cart.stateName shouldBe NonEmpty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map(bigosURI -> bigos.copy(count = 2))))
+    val shoppingCart = ShoppingCart(Map(bigosURI -> bigos))
+
+    cart ! GetShoppingCart
+    expectMsg(shoppingCart)
+    Thread.sleep(time.toMillis)
+    cart ! PoisonPill
+
+    val cart2 = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
+
+    Thread.sleep((1.5 * time.toMillis).asInstanceOf[Int])
+    cart2 ! GetShoppingCart
+    expectMsg(ShoppingCart())
   }
+
+
 
   "Cart" should "stay in NonEmpty state after adding two products and removing one" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+    val time = 1.seconds
+    val id = "cart-4"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart ! ItemAdded(jajka)
-    cart.stateName shouldBe NonEmpty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map(
-      bigosURI -> bigos,
-      jajkaURI -> jajka
-    )))
-    cart ! ItemRemoved(jajka)
-    cart.stateName shouldBe NonEmpty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map(
-      bigosURI -> bigos,
-    )))
+    cart ! ItemAdded(bigos)
+    cart ! ItemRemoved(bigos.id)
+    val shoppingCart = ShoppingCart(Map(bigosURI -> bigos))
+
+    cart ! GetShoppingCart
+    expectMsg(shoppingCart)
   }
   "Cart" should "return to Empty state after adding and removing one item" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+    val time = 1.seconds
+    val id = "cart-5"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart ! ItemRemoved(bigos)
-    cart.stateName shouldBe Empty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map.empty))
+    cart ! ItemRemoved(bigos.id)
+
+    cart ! GetShoppingCart
+    expectMsg(ShoppingCart())
   }
 
   "Cart" should "go to InCheckout after adding product and checking out" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+    val time = 1.seconds
+    val id = "cart-6"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart ! CheckoutStarted
-    cart.stateName shouldBe InCheckout
+    cart ! CartMessages.CheckoutStarted
+
+    customer.expectMsgPF() {
+      case Customer.CheckoutStarted(_)  => ()
+    }
   }
 
   "Cart" should "go to NonEmpty after checking with product and canceling" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+    val time = 1.seconds
+    val id = "cart-7"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    cart ! CheckoutStarted
-    cart ! CheckoutCanceled
-    cart.stateName shouldBe NonEmpty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart(Map(bigosURI -> bigos)))
+    cart ! CartMessages.CheckoutStarted
+    cart ! CartMessages.CheckoutCanceled
+    cart ! GetShoppingCart
+    val shoppingCart = ShoppingCart(Map(bigosURI -> bigos))
+    expectMsg(shoppingCart)
+    cart ! GetStateData
+    expectMsgPF() {
+      case CartManagerContent(_) => ()
+    }
   }
 
   "Cart" should "go to Empty after adding checking with product and closing" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer))
+    val time = 1.seconds
+    val id = "cart-8"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
     cart ! CheckoutStarted
     cart ! CheckoutClosed
-    cart.stateName shouldBe Empty
-    cart.stateData shouldBe CartManagerContent(ShoppingCart())
+    cart ! GetShoppingCart
+    expectMsg(ShoppingCart())
   }
 
   "Cart" should "go to Empty after adding product and expiring" in {
-    val cart = TestFSMRef(new CartManagerFSM(customer, 100.millis))
+    val time = 1.seconds
+    val id = "cart-9"
+    val cart = system.actorOf(Props(new CartManagerFSM(customer.ref, id, time)))
     cart ! ItemAdded(bigos)
-    eventually { // waits 150 milliseconds by default
-      cart.stateName shouldBe Empty
-      cart.stateData shouldBe CartManagerContent()
-    }
+    Thread.sleep(2 * time.toMillis)
+    cart ! GetShoppingCart
+    expectMsg(ShoppingCart())
   }
 }
 

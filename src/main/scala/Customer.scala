@@ -1,5 +1,6 @@
 import akka.actor.{Actor, ActorRef, FSM, Props}
 import akka.event.LoggingReceive
+import Utils.generateID
 
 sealed trait CustomerData
 
@@ -7,22 +8,22 @@ sealed trait CustomerState
 
 class Customer extends FSM[CustomerState, CustomerData] {
   startWith(Customer.FirstState, Customer.CustomerCart(
-    context.system.actorOf(Props(new CartManagerFSM(context.self)))
+    context.system.actorOf(Props(new CartManagerFSM(context.self, generateID())))
   ))
 
   when(Customer.FirstState) {
     case Event(Customer.AddItem(_), Customer.CustomerCart(cart)) =>
-      cart ! Cart.ItemAdded
+      cart ! CartMessages.ItemAdded
       goto(Customer.SecondState)
   }
 
   when(Customer.SecondState) {
     case Event(Customer.AddItem(_), Customer.CustomerCart(cart)) =>
-      cart ! Cart.ItemAdded
+      cart ! CartMessages.ItemAdded
       goto(Customer.SecondState)
 
     case Event(Customer.StartCheckout, Customer.CustomerCart(cart)) =>
-      cart ! Cart.CheckoutStarted
+      cart ! CartMessages.CheckoutStarted
       goto(Customer.ThirdState)
   }
 

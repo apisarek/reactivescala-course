@@ -55,7 +55,7 @@ class CheckoutFSM(
       sender() ! Customer.PaymentServiceStarted(paymentService)
     case _ -> Closed =>
       customer ! Customer.CheckoutClosed
-      cart ! Cart.CheckoutClosed
+      cart ! CartMessages.CheckoutClosed
   }
 
   initialize()
