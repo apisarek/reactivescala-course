@@ -1,11 +1,14 @@
-import PaymentService.DoPayment
+package shop
+
 import akka.actor.{Actor, ActorRef}
+import checkout.CheckoutMessages
+import shop.PaymentService.DoPayment
 
 class PaymentService(checkout: ActorRef) extends Actor {
   override def receive: Receive = {
     case DoPayment =>
-      sender() ! Customer.PaymentConfirmed
-      checkout ! Checkout.PaymentReceived
+      sender() ! CustomerMessages.PaymentConfirmed
+      checkout ! CheckoutMessages.PaymentReceived
   }
 }
 

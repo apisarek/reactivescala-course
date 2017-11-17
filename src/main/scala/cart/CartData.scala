@@ -1,3 +1,5 @@
+package cart
+
 import akka.actor.ActorRef
 
 sealed trait CartData {
@@ -9,9 +11,10 @@ sealed trait CartData {
 
   def removeCheckout(): CartManagerContent
 }
+
 final case class CartManagerContent(shoppingCart: ShoppingCart = ShoppingCart()) extends CartData {
   def addCheckout(checkout: ActorRef): CartManagerContentWithCheckout = {
-    CartManagerContentWithCheckout(shoppingCart, checkout)
+    cart.CartManagerContentWithCheckout(shoppingCart, checkout)
   }
 
   override def updateShoppingCart(newShoppingCart: ShoppingCart): CartData = {
@@ -23,7 +26,7 @@ final case class CartManagerContent(shoppingCart: ShoppingCart = ShoppingCart())
 
 final case class CartManagerContentWithCheckout(shoppingCart: ShoppingCart, checkout: ActorRef) extends CartData {
   def removeCheckout(): CartManagerContent = {
-    CartManagerContent(shoppingCart)
+    cart.CartManagerContent(shoppingCart)
   }
 
   override def updateShoppingCart(newShoppingCart: ShoppingCart): CartData =

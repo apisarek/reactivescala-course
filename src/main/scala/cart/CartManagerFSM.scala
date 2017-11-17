@@ -1,12 +1,15 @@
+package cart
+
 import java.net.URI
 
 import akka.actor.{ActorRef, Props}
 import akka.persistence.fsm.PersistentFSM
+import checkout.CheckoutFSM
+import shop.CustomerMessages
 
 import scala.concurrent.duration._
 import scala.reflect._
-
-
+import shop.Utils.generateID
 class CartManagerFSM(
   customer: ActorRef,
   id: String,
@@ -35,16 +38,16 @@ class CartManagerFSM(
     case Event(ItemRemoved(item), CartManagerContent(_)) =>
       stay applying RemovingItem(item)
     case Event(CheckoutStarted, _: CartManagerContent) =>
-      val checkout = context.system.actorOf(Props(new CheckoutFSM(context.self, customer)))
+      val checkout = context.system.actorOf(Props(new CheckoutFSM(context.self, customer, generateID())))
       goto(InCheckout) applying AddingCheckout(checkout)
   }
 
   onTransition {
     case _ -> InCheckout =>
       val checkout = nextStateData.asInstanceOf[CartManagerContentWithCheckout].checkout
-      customer ! Customer.CheckoutStarted(checkout)
+      customer ! CustomerMessages.CheckoutStarted(checkout)
     case InCheckout -> Empty =>
-      customer ! Customer.CartEmpty
+      customer ! CustomerMessages.CartEmpty
   }
 
   when(InCheckout) {

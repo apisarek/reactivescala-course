@@ -1,3 +1,5 @@
+package cart
+
 import java.net.URI
 
 case class ShoppingCart(items: Map[URI, Item] = Map.empty) {
@@ -21,5 +23,3 @@ case class ShoppingCart(items: Map[URI, Item] = Map.empty) {
   def count: Int = items.values.map(_.count).sum
   def isEmpty: Boolean = count <= 0
 }
-
-case class Item(id: URI, name: String, price: BigDecimal, count: Int = 1)

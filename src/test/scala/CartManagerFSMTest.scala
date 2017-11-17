@@ -2,8 +2,10 @@ import java.net.URI
 
 import akka.actor.{ActorSystem, PoisonPill, Props}
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
+import cart._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
+import shop.CustomerMessages
 
 import scala.concurrent.duration._
 
@@ -14,7 +16,7 @@ class CartManagerFSMTest extends TestKit(ActorSystem("CartFSMTest"))
   with Eventually
   with ImplicitSender
 {
-  import CartMessages._
+  import cart.CartMessages._
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
@@ -105,7 +107,7 @@ class CartManagerFSMTest extends TestKit(ActorSystem("CartFSMTest"))
     cart ! CartMessages.CheckoutStarted
 
     customer.expectMsgPF() {
-      case Customer.CheckoutStarted(_)  => ()
+      case CustomerMessages.CheckoutStarted(_)  => ()
     }
   }
 

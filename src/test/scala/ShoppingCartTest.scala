@@ -1,3 +1,4 @@
+import cart.ShoppingCart
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
@@ -9,7 +10,7 @@ class ShoppingCartTest extends FlatSpec
   val bigos = "bigos"
   val jajka = "jajka"
 
-  "ShoppingCart" should "start in Empty state" in {
+  "cart.ShoppingCart" should "start in Empty state" in {
     val shoppingCart = ShoppingCart()
     shoppingCart.items shouldBe Map.empty
   }

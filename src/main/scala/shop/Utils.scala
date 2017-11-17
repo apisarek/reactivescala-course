@@ -1,3 +1,5 @@
+package shop
+
 import java.util.UUID
 
 object Utils {
