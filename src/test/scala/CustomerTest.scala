@@ -1,10 +1,13 @@
+import java.net.URI
+
 import akka.actor.ActorSystem
 import akka.testkit.{TestFSMRef, TestKit}
+import cart.Item
 import org.scalatest.concurrent.Eventually
 import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-import shop.{Customer, CustomerMessages}
+import shop.{Customer, CustomerMessages, FirstState}
 
-class CustomerTest extends TestKit(ActorSystem("CustomerTest"))
+class CustomerTest extends TestKit(ActorSystem("PaymentServiceTest"))
   with FlatSpecLike
   with Matchers
   with BeforeAndAfterAll with Eventually {
@@ -15,11 +18,13 @@ class CustomerTest extends TestKit(ActorSystem("CustomerTest"))
 
   "Customer" should "start with empty Cart" in {
     val customer = TestFSMRef(new Customer())
-    customer ! CustomerMessages.AddItem("BANANA")
+
+    customer ! CustomerMessages.AddItem(Item(URI.create("BANAN"), "BANAN", 0))
     customer ! CustomerMessages.StartCheckout
     Thread.sleep(500)
     customer ! CustomerMessages.DeliveryMethodSelected("delivery")
-    customer ! CustomerMessages.PaymentSelected("payment")
+    Thread.sleep(500)
+    customer ! CustomerMessages.PaymentSelected("paypal")
     Thread.sleep(500)
     customer.stateName shouldNot be (FirstState)
     customer ! CustomerMessages.DoPayment
