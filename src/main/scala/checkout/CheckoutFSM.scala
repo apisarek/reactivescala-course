@@ -38,6 +38,7 @@ class CheckoutFSM(
 
   when(ProcessingPayment, stateTimeout = paymentExpirationTime) {
     case Event(CheckoutMessages.PaymentReceived, _) =>
+      print("DOSTALEM")
       goto(Closed)
     case Event(StateTimeout | CheckoutMessages.Cancelled, _) =>
       goto(Cancelled) applying CleaningData
@@ -45,11 +46,29 @@ class CheckoutFSM(
   }
 
   when(Cancelled) {
-    case _ => stay
+    case Event(PrintStateName, _) =>
+    println(stateName)
+    println(stateData)
+    stay
+  case Event(CheckoutMessages.GetStateData, _) =>
+    sender() ! stateData
+    stay
+  case Event(CheckoutMessages.GetStateName, _) =>
+    sender() ! stateName
+    stay
   }
 
   when(Closed) {
-    case _ => stay
+    case Event(PrintStateName, _) =>
+      println(stateName)
+      println(stateData)
+      stay
+    case Event(CheckoutMessages.GetStateData, _) =>
+      sender() ! stateData
+      stay
+    case Event(CheckoutMessages.GetStateName, _) =>
+      sender() ! stateName
+      stay
   }
 
   whenUnhandled {

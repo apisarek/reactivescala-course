@@ -17,7 +17,7 @@ class PaymentServiceTest extends TestKit(ActorSystem("PaymentServiceTest"))
   "PaymentService" should "work" in {
     val checkout = TestProbe()
     val paymentService = system.actorOf(Props(new PaymentService(checkout.ref)))
-    paymentService ! DoPayment("paypal")
+    paymentService ! DoPayment("visa")
     Thread.sleep(20000)
   }
 }

@@ -21,11 +21,11 @@ class CustomerTest extends TestKit(ActorSystem("PaymentServiceTest"))
 
     customer ! CustomerMessages.AddItem(Item(URI.create("BANAN"), "BANAN", 0))
     customer ! CustomerMessages.StartCheckout
-    Thread.sleep(500)
+    Thread.sleep(1000)
     customer ! CustomerMessages.DeliveryMethodSelected("delivery")
-    Thread.sleep(500)
+    Thread.sleep(1000)
     customer ! CustomerMessages.PaymentSelected("paypal")
-    Thread.sleep(500)
+    Thread.sleep(1000)
     customer.stateName shouldNot be (FirstState)
     customer ! CustomerMessages.DoPayment
     Thread.sleep(1000)

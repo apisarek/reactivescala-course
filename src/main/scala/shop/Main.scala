@@ -14,7 +14,7 @@ object Main extends App {
     "productCatalog"
   )
   val mainActor = mainSystem.actorOf(Props[MainActor])
-  mainActor ! TopMatching("fanta", 5)
+  mainActor ! TopMatching("gillette", 10)
 }
 
 class MainActor extends Actor {

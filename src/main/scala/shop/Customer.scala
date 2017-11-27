@@ -4,6 +4,7 @@ import java.net.URI
 
 import akka.actor.{ActorRef, FSM, Props}
 import akka.pattern.ask
+import akka.util
 import akka.util.Timeout
 import cart.{CartManagerFSM, CartMessages, Item}
 import checkout.CheckoutMessages
@@ -64,21 +65,22 @@ class Customer extends FSM[CustomerState, CustomerData] {
 
   when(SeventhState) {
     case Event(CustomerMessages.DoPayment, CustomerCartCheckoutPayment(_, _, paymentService)) =>
-//      implicit val timeout = Timeout(5.seconds)
-////      implicit val ec = ExecutionContext.fromExecutorService(yourExecutorServiceGoesHere)
-//      import context.dispatcher
-//      val future = paymentService ? PaymentService.DoPayment(paymentMeth)
-//      import scala.util.{Success, Failure}
-//      future onComplete {
-//
-//        case Success(_) => ()
-//        case Failure(_) => throw new Exception
-//
-//      }
-//      goto(EightState)
-      paymentService ! PaymentService.DoPayment("paypal")
-      goto(EightState)
+      import scala.util.{Success, Failure}
+      import context.dispatcher
+      implicit val timeout: util.Timeout = Timeout(100.millis)
 
+      val future = paymentService ? PaymentService.DoPayment(paymentMeth)
+      future onComplete {
+
+        case Success(_) => ()
+        case Failure(_) => throw new Exception
+
+      }
+//      paymentService ! PaymentService.DoPayment("paypal")
+//      goto(EightState)
+      stay()
+    case Event(CustomerMessages.PaymentConfirmed, _) =>
+      goto(NinthState)
   }
 
   when(EightState) {
