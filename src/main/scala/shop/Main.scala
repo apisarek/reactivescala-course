@@ -10,7 +10,7 @@ object Main extends App {
   val catalogSystem = ActorSystem("productCatalog", config.getConfig("productcatalog").withFallback(config))
   val mainSystem = ActorSystem("main", config.getConfig("main").withFallback(config))
   catalogSystem.actorOf(
-    Props(new ProductCatalogManager(ProductCatalog("../query_result"))),
+    Props[ProductCatalogRouter],
     "productCatalog"
   )
   val mainActor = mainSystem.actorOf(Props[MainActor])
