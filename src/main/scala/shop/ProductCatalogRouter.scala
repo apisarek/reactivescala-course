@@ -6,7 +6,7 @@ import shop.ProductCatalogMessages.TopMatching
 
 class ProductCatalogRouter extends Actor {
   var router = {
-    val routees = Vector.fill(3) {
+    val routees = Vector.fill(10) {
       val r = context.actorOf(Props(new ProductCatalogManager(ProductCatalog("../query_result"))))
       context watch r
       ActorRefRoutee(r)

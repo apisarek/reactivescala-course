@@ -14,5 +14,8 @@ libraryDependencies ++= Seq(
   "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8",
   "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.1.1",
   "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.10",
-  "net.liftweb" %% "lift-json" % "3.1.1"
+  "net.liftweb" %% "lift-json" % "3.1.1",
+  "com.typesafe.akka" %% "akka-cluster" % "2.5.7",
+  "com.typesafe.akka" %% "akka-cluster-tools" % "2.5.7"
 )
+

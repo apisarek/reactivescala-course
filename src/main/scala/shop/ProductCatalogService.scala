@@ -3,6 +3,8 @@ package shop
 import java.net.URI
 
 import akka.actor.{ActorSystem, Props}
+import akka.cluster.pubsub.DistributedPubSub
+import akka.cluster.pubsub.DistributedPubSubMediator.Publish
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives
@@ -10,6 +12,7 @@ import akka.pattern.ask
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import cart.Item
+import com.typesafe.config.ConfigFactory
 import net.liftweb.json.Serialization.write
 import net.liftweb.json._
 import shop.ProductCatalogMessages.TopMatching
@@ -52,11 +55,13 @@ object URISerializer extends Serializer[URI] {
 
 final case class Response(items: List[Item])
 
+case class PublishRequest(request: String)
 
 object ProductCatalogService extends Directives {
   def main(args: Array[String]) {
 
-    implicit val system: ActorSystem = ActorSystem("my-system")
+    val config = ConfigFactory.load()
+    implicit val system: ActorSystem = ActorSystem(config.getString("application.name"), config)
     val productCatalogRouter = system.actorOf(Props[ProductCatalogRouter])
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     // needed for the future flatMap/onComplete in the end
@@ -64,10 +69,13 @@ object ProductCatalogService extends Directives {
 
 
     implicit val formats = DefaultFormats + BigDecimalSerializer + URISerializer
+
+    val mediator = DistributedPubSub(system).mediator
     val route =
       path("hello") {
         parameters('query) { (query) =>
           get {
+            mediator ! Publish("requests", PublishRequest(query.toString()))
             implicit val timeout = Timeout(10 seconds)
             val future = productCatalogRouter ? TopMatching(query, 10)
             val result = Await.result(future, timeout.duration).asInstanceOf[List[Item]]
@@ -81,9 +89,11 @@ object ProductCatalogService extends Directives {
 
       }
 
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    val ip = config.getString("clustering.ip")
+    val port = config.getInt("application.exposed-port")
+    val bindingFuture = Http().bindAndHandle(route, ip, port)
 
-    println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+    println(s"Server online at http://$ip:$port/\nPress RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
     bindingFuture
       .flatMap(_.unbind()) // trigger unbinding from the port
